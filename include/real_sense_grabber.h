@@ -45,6 +45,8 @@
 #include <pcl/point_types.h>
 #include <pcl/io/grabber.h>
 
+#include <pxcimage.h>
+
 #include "real_sense/time.h"
 
 namespace pcl
@@ -171,7 +173,7 @@ namespace pcl
 
       /// Depth buffer to perform temporal filtering of the depth images
       boost::shared_ptr<pcl::io::Buffer<unsigned short> > depth_buffer_;
-
+	
   };
 
 }

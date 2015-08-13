@@ -135,6 +135,9 @@ class RealSenseViewer
     , threshold_ (6)
     , temporal_filtering_ (pcl::RealSenseGrabber::RealSense_None)
     , with_bilateral_ (false)
+	, save_stream_(false)
+	, stream_id_(0)
+	, frame_id_(0)
     {
       viewer_.registerKeyboardCallback (&RealSenseViewer::keyboardCallback, *this);
       bilateral_.setSigmaS (5);
@@ -189,6 +192,12 @@ class RealSenseViewer
         {
           new_cloud_ = cloud;
         }
+		
+		if (save_stream_)
+		{
+			savePointCloud(new_cloud_);
+		}
+			
       }
     }
 
@@ -269,7 +278,7 @@ class RealSenseViewer
           pcl::console::print_value ("%.2f\n", r);
           bilateral_.setSigmaR (r);
         }
-        if (event.getKeyCode () == 's')
+        if (event.getKeyCode () == 'p')
         {
           boost::format fmt ("RS_%s_%u.pcd");
           std::string fn = boost::str (fmt % grabber_.getDeviceSerialNumber ().c_str () % last_cloud_->header.stamp);
@@ -278,9 +287,45 @@ class RealSenseViewer
           pcl::console::print_value (fn.c_str ());
           pcl::console::print_info ("\n");
         }
+		if (event.getKeyCode() == 's')
+		{
+			save_stream_ = !save_stream_;
+			pcl::console::print_info("Record stream: ");
+			pcl::console::print_value(save_stream_ ? "ON\n" : "OFF\n");
+			if (save_stream_)
+			{
+				stream_id_++; frame_id_++;
+				createStreamDirectory();
+			}
+			else
+			{
+				frame_id_ = 0;
+			}
+			
+		}
         displaySettings ();
       }
     }
+
+	void createStreamDirectory()
+	{
+		std::stringstream ss;
+		ss << std::setfill('0') << std::setw(4) << stream_id_;
+		if (!CreateDirectory(ss.str().c_str(), NULL))
+		{
+			std::cerr << "Error creating save directory." << std::endl;
+			exit(-1);
+		}
+
+	}
+	
+	void savePointCloud(typename PointCloudT::ConstPtr cloud)
+	{
+		std::stringstream ss;
+		ss << std::setfill('0') << std::setw(4) << stream_id_ << "/" << std::setfill('0') << std::setw(4) << frame_id_ << ".pcd";
+		pcl::io::savePCDFileBinaryCompressed(ss.str(), *cloud);
+		frame_id_++;
+	}
 
     void displaySettings ()
     {
@@ -300,7 +345,9 @@ class RealSenseViewer
       // Bilateral filter settings
       std::string bfs = boost::str (boost::format ("spatial sigma %.0f, range sigma %.2f") % bilateral_.getSigmaS () % bilateral_.getSigmaR ());
       entries.push_back (boost::format ("bilateral filtering: %s") % (with_bilateral_ ? bfs : "off"));
-      for (size_t i = 0; i < entries.size (); ++i)
+	  // File io
+	  entries.push_back(boost::format("save stream: %s") % (save_stream_ ? "on" : "off"));
+	  for (size_t i = 0; i < entries.size (); ++i)
       {
         std::string name = boost::str (name_fmt % i);
         std::string entry = boost::str (entries[i]);
@@ -319,6 +366,9 @@ class RealSenseViewer
     int threshold_;
     pcl::RealSenseGrabber::TemporalFilteringType temporal_filtering_;
     bool with_bilateral_;
+	bool save_stream_;
+	int stream_id_;
+	int frame_id_;
 
     mutable boost::mutex new_cloud_mutex_;
     typename PointCloudT::ConstPtr new_cloud_;

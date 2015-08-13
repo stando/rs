@@ -132,6 +132,16 @@ pcl::RealSenseGrabber::start ()
       if (!valid)
         THROW_IO_EXCEPTION ("invalid stream profile for PXC device");
 
+
+	  PXCCalibration* calib = device_->getPXCDevice().CreateProjection()->QueryInstance<PXCCalibration>();
+	  PXCCalibration::StreamCalibration depth_calib;
+	  PXCCalibration::StreamTransform depth_trans;
+	  calib->QueryStreamProjectionParameters(PXCCapture::STREAM_TYPE_DEPTH, &depth_calib, &depth_trans);
+	  std::cout << "Focal Length      : " << depth_calib.focalLength.x << ", " << depth_calib.focalLength.y << std::endl;
+	  std::cout << "Principal Point   : " << depth_calib.principalPoint.x << ", " << depth_calib.principalPoint.y << std::endl;
+	  std::cout << "Radial Distortion : " << depth_calib.radialDistortion[0] << ", " << depth_calib.radialDistortion[1] << ", " << depth_calib.radialDistortion[2] << std::endl;
+	  std::cout << "Tangent Distortion: " << depth_calib.tangentialDistortion[0] << ", " << depth_calib.tangentialDistortion[1] << std::endl;
+
       thread_ = boost::thread (&RealSenseGrabber::run, this);
     }
   }
@@ -294,7 +304,8 @@ pcl::RealSenseGrabber::run ()
       {
         PXCImage::ImageData data;
         PXCImage* mapped = projection->CreateColorImageMappedToDepth (sample.depth, sample.color);
-        mapped->AcquireAccess (PXCImage::ACCESS_READ, &data);
+        
+		mapped->AcquireAccess (PXCImage::ACCESS_READ, &data);
         uint32_t* d = reinterpret_cast<uint32_t*> (data.planes[0]);
         if (need_xyz_)
         {
